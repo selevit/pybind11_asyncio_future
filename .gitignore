@@ -1,0 +1,13 @@
+dist/
+build/
+build*/
+_build/
+__pycache__/
+_generate/
+*.so
+*.py[cod]
+*.egg-info
+*env*
+wheelhouse/
+.vscode/
+.idea/
