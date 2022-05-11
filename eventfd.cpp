@@ -21,21 +21,25 @@ public:
             read_fd = eventfd(0, EFD_NONBLOCK);
             write_fd = read_fd;
         #else
-            int buf[2];
-            pipe(buf);
-            read_fd = buf[0];
-            write_fd = buf[1];
+            int p[2];
+            pipe(p);
+            read_fd = p[0];
+            write_fd = p[1];
         #endif
     }
 
     void ack() {
         uint8_t buf[8];
-        read(read_fd, &buf, sizeof(uint64_t));
+        if (read(read_fd, &buf, sizeof(uint64_t)) == -1) {
+            throw std::system_error(errno, std::generic_category(), "Failed to read from eventfd");
+        }
     }
 
     void notify() {
         uint64_t new_event_flag = 1;
-        write(write_fd, &new_event_flag, sizeof(uint64_t));
+        if (write(write_fd, &new_event_flag, sizeof(uint64_t)) == -1) {
+            throw std::system_error(errno, std::generic_category(), "Failed to write to eventfd");
+        }
     }
 
     int fd() {
