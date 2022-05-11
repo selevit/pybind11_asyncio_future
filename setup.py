@@ -38,6 +38,12 @@ ext_modules = [
         define_macros = [('VERSION_INFO', __version__)],
         #undef_macros=['DEBUG', 'NDEBUG'],
     ),
+    Pybind11Extension("myeventfd",
+        ["eventfd.cpp"],
+        # Example: passing in the version to the compiled code
+        define_macros = [('VERSION_INFO', __version__)],
+        #undef_macros=['DEBUG', 'NDEBUG'],
+    ),
 ]
 
 setup(
