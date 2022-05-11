@@ -5,7 +5,7 @@
 ```bash
 python3 -m venv env
 . env/bin/activate
-pip install pybind
+pip install pybind11
 ```
 
 **Compile and run**
