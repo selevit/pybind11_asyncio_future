@@ -12,24 +12,25 @@ class Ticker {
             python_awaiting = false;
         }
 
-        py::object async_next_ticker() {
+        py::object next_ticker_async() {
             py::object loop = py::module_::import("asyncio.events").attr("get_event_loop")();
             fut = loop.attr("create_future")();
             python_awaiting = true;
+            cout << "[cpp] Python awaiting for the next ticker" << endl;
             return fut;
         }
 
         void subscribe() {
             sub = std::thread([this] {
-                cout << "subscribing" << endl;
+                cout << "[cpp] Ticker subscribtion started" << endl;
                 int ticker = 1;
                 while (true) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(500));
                     if (python_awaiting) {
-                        cout << "updating ticker" << endl;
+                        cout << "[cpp] Updating ticker" << endl;
                         py::gil_scoped_acquire acquire;
                         fut.attr("set_result")(ticker++);
-                        cout << "ticker updated" << endl;
+                        cout << "[cpp] Ticker updated" << endl;
                         python_awaiting = false;
                     }
                 }
@@ -46,5 +47,5 @@ PYBIND11_MODULE(example, m) {
     py::class_<Ticker>(m, "Ticker")
         .def(py::init<>())
         .def("subscribe", &Ticker::subscribe)
-        .def("next_ticker", &Ticker::async_next_ticker);// py::return_value_policy::reference);
+        .def("next_ticker", &Ticker::next_ticker_async);
 }

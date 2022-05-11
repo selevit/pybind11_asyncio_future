@@ -7,8 +7,8 @@ async def main():
     tk.subscribe()
     #sleep(5)
     while True:
-        print("Awaiting to the ticker")
+        print("[py] Awaiting to the ticker")
         ticker = await tk.next_ticker()
-        print(f"Ticker received: {ticker}")
+        print(f"[py] Ticker received: {ticker}")
 
 asyncio.run(main())
