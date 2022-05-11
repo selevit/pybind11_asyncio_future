@@ -28,7 +28,7 @@ public:
         #endif
     }
 
-    void clear() {
+    void ack() {
         uint8_t buf[8];
         read(read_fd, &buf, sizeof(uint64_t));
     }
@@ -52,17 +52,19 @@ private:
     int write_fd;
 };
 
-using PyTickerCallback = std::function<void(int)>;
+using PyTickerUpdateCallback = std::function<void()>;
 
 class Ticker {
     public:
-        Ticker(PyTickerCallback const& ticker_cb) {
-            ticker_value = 1;
-            ticker_callback = ticker_cb;
+        Ticker(PyTickerUpdateCallback const &ticker_cb)
+        {
             py::object loop = py::module_::import("asyncio").attr("get_running_loop")();
+            ticker_callback = ticker_cb;
             loop.attr("add_reader")(event.fd(), py::cpp_function([this] {
-                event.clear();
-                this->ticker_callback(ticker_value);
+                event.ack();
+                callback_busy = true;
+                ticker_callback();
+                callback_busy = false;
             }));
             subscribe();
         }
@@ -72,21 +74,24 @@ class Ticker {
                 cout << "[cpp] Ticker subscribtion started" << endl;
                 while (true) {
                     ticker_value += 1;
-                    event.notify();
+                    if (!callback_busy) {
+                        event.notify();
+                    }
                     std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 }
             });
         }
 
-        int ticker_value;
+        int ticker_value = 1;
     private:
+        bool callback_busy = false;
         std::thread producing_thread;
-        PyTickerCallback ticker_callback;
+        PyTickerUpdateCallback ticker_callback;
         EventFd event;
 };
 
 PYBIND11_MODULE(myeventfd, m) {
     py::class_<Ticker>(m, "Ticker")
-        .def(py::init<PyTickerCallback const&>(), py::arg("ticker_callback"))
+        .def(py::init<PyTickerUpdateCallback const &>(), py::arg("on_ticker_update"))
         .def_readonly("ticker_value", &Ticker::ticker_value);
 }
