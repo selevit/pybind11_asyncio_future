@@ -29,8 +29,8 @@ public:
     }
 
     void ack() {
-        uint8_t buf[8];
-        if (read(read_fd, &buf, sizeof(uint64_t)) == -1) {
+        uint64_t tmp;
+        if (read(read_fd, &tmp, sizeof(uint64_t)) == -1) {
             throw std::system_error(errno, std::generic_category(), "Failed to read from eventfd");
         }
     }
@@ -60,8 +60,7 @@ using PyTickerUpdateCallback = std::function<void()>;
 
 class Ticker {
     public:
-        Ticker(PyTickerUpdateCallback const &ticker_cb)
-        {
+        Ticker(PyTickerUpdateCallback const &ticker_cb) {
             py::object loop = py::module_::import("asyncio").attr("get_running_loop")();
             ticker_callback = ticker_cb;
             loop.attr("add_reader")(event.fd(), py::cpp_function([this] {
@@ -76,12 +75,10 @@ class Ticker {
         void subscribe() {
             producing_thread = std::thread([this] {
                 cout << "[cpp] Ticker subscribtion started" << endl;
-                while (true) {
+                for (int i = 0; i < 10000; i++) {
                     ticker_value += 1;
-                    if (!callback_busy) {
-                        event.notify();
-                    }
-                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    event.notify();
+                    //std::this_thread::sleep_for(std::chrono::microseconds(1));
                 }
             });
         }
