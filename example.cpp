@@ -8,12 +8,11 @@ namespace py = pybind11;
 
 class Ticker {
     public:
-        Ticker() {
+        Ticker(py::object loop) : loop(loop)  {
             python_awaiting = false;
         }
 
         py::object next_ticker_async() {
-            py::object loop = py::module_::import("asyncio.events").attr("get_event_loop")();
             fut = loop.attr("create_future")();
             python_awaiting = true;
             cout << "[cpp] Python awaiting for the next ticker" << endl;
@@ -29,7 +28,7 @@ class Ticker {
                     if (python_awaiting) {
                         cout << "[cpp] Updating ticker" << endl;
                         py::gil_scoped_acquire acquire;
-                        fut.attr("set_result")(ticker++);
+                        loop.attr("call_soon_threadsafe")(fut.attr("set_result"), ticker++);
                         cout << "[cpp] Ticker updated" << endl;
                         python_awaiting = false;
                     }
@@ -38,6 +37,7 @@ class Ticker {
         }
 
     private:
+        py::object loop;
         py::object fut;
         std::thread sub;
         bool python_awaiting;
@@ -45,7 +45,7 @@ class Ticker {
 
 PYBIND11_MODULE(example, m) {
     py::class_<Ticker>(m, "Ticker")
-        .def(py::init<>())
+        .def(py::init<py::object>())
         .def("subscribe", &Ticker::subscribe)
         .def("next_ticker", &Ticker::next_ticker_async);
 }

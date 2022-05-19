@@ -3,7 +3,8 @@ from example import Ticker
 from time import sleep
 
 async def main():
-    tk = Ticker()
+    loop = asyncio.get_running_loop()
+    tk = Ticker(loop)
     tk.subscribe()
     #sleep(5)
     while True:
