@@ -46,15 +46,14 @@ class Ticker {
 
     uint64_t last_ticker_time;
     private:
+        py::object loop;
         py::object fut;
         std::thread sub;
-        py::object loop;
         bool python_awaiting;
 };
 
 PYBIND11_MODULE(example, m) {
     py::class_<Ticker>(m, "Ticker")
-        //.def(py::init<>())
         .def(py::init<py::object>())
         .def("subscribe", &Ticker::subscribe)
         .def_readonly("last_ticker_time", &Ticker::last_ticker_time)
