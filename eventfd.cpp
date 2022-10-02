@@ -8,6 +8,11 @@
 using namespace std;
 namespace py = pybind11;
 
+uint64_t monotonic_time()
+{
+    return chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now().time_since_epoch()).count();
+}
+
 #ifdef __linux__
     #include <sys/eventfd.h>
 #else
@@ -37,7 +42,7 @@ public:
 
     void notify() {
         uint64_t new_event_flag = 1;
-        if (write(write_fd, &new_event_flag, sizeof(uint64_t)) == -1) {
+        if (write(write_fd, &new_event_flag, 1) == -1) {
             throw std::system_error(errno, std::generic_category(), "Failed to write to eventfd");
         }
     }
@@ -60,39 +65,34 @@ using PyTickerUpdateCallback = std::function<void()>;
 
 class Ticker {
     public:
-        Ticker(PyTickerUpdateCallback const &ticker_cb) {
-            py::object loop = py::module_::import("asyncio").attr("get_running_loop")();
-            ticker_callback = ticker_cb;
-            loop.attr("add_reader")(event.fd(), py::cpp_function([this] {
-                event.ack();
-                callback_busy = true;
-                ticker_callback();
-                callback_busy = false;
-            }));
-            subscribe();
-        }
-
         void subscribe() {
             producing_thread = std::thread([this] {
                 cout << "[cpp] Ticker subscribtion started" << endl;
                 for (int i = 0; i < 10000; i++) {
-                    ticker_value += 1;
+                    ticker_value = monotonic_time();
                     event.notify();
-                    //std::this_thread::sleep_for(std::chrono::microseconds(1));
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 }
             });
         }
 
-        int ticker_value = 1;
+        int get_event_fd() {
+            return event.fd();
+        }
+
+        std::atomic<uint64_t> ticker_value = 0;
     private:
-        bool callback_busy = false;
         std::thread producing_thread;
-        PyTickerUpdateCallback ticker_callback;
         EventFd event;
 };
 
 PYBIND11_MODULE(myeventfd, m) {
     py::class_<Ticker>(m, "Ticker")
-        .def(py::init<PyTickerUpdateCallback const &>(), py::arg("on_ticker_update"))
-        .def_readonly("ticker_value", &Ticker::ticker_value);
+        .def(py::init<>())
+        .def("subscribe", &Ticker::subscribe)
+        .def("get_event_fd", &Ticker::get_event_fd)
+        .def_property("ticker_value", [](Ticker& ticker) {
+            return ticker.ticker_value.load();
+        }, nullptr);
+    m.def("monotonic_time", &monotonic_time);
 }

@@ -37,9 +37,8 @@ class Ticker:
 
 async def run_ticker_subscr(ticker: Ticker):
     while True:
-        ticker._result = monotonic()
-        ticker._loop.call_soon_threadsafe(ticker._done_callback, ticker)
-        await asyncio.sleep(0.1)
+        ticker.set_result(monotonic())
+        await asyncio.sleep(0.5)
 
 
 async def main():
